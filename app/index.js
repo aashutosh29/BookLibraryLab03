@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlatList, Button, StyleSheet, TextInput, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { FlatList, Button, StyleSheet, TextInput, View, Text, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { collection, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -14,9 +14,8 @@ export default function BookListScreen() {
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [description, setDescription] = useState('');
-  const [showForm, setShowForm] = useState(false); // State to toggle form visibility
+  const [showForm, setShowForm] = useState(false);
 
-  // Real-time listener for books and borrowed books
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'books'), (snapshot) => {
       const bookData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -32,13 +31,12 @@ export default function BookListScreen() {
       console.error('Error in Firestore listener:', error);
     });
 
-    // Clean up the listener on component unmount
     return () => unsubscribe();
-  }, [dispatch, borrowedBooks]); // Avoiding re-sync loops
+  }, [dispatch, borrowedBooks]);
 
   const handleAddBook = async () => {
     if (!title || !author || !description) {
-      alert('Please fill in all fields');
+      alert('Please filal in all fields');
       return;
     }
     
@@ -55,53 +53,52 @@ export default function BookListScreen() {
     }
   };
 
+  const renderHeader = () => (
+    <>
+      <TouchableOpacity style={styles.toggleButton} onPress={() => setShowForm(prev => !prev)}>
+        <Text style={styles.toggleButtonText}>{showForm ? 'Hide Add Book Form' : 'Add a New Book'}</Text>
+      </TouchableOpacity>
+
+      {showForm && (
+        <View style={styles.formContainer}>
+          <Text style={styles.formTitle}>Add a New Book</Text>
+          <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
+          <TextInput style={styles.input} placeholder="Author" value={author} onChangeText={setAuthor} />
+          <TextInput style={styles.input} placeholder="Description" value={description} onChangeText={setDescription} multiline />
+          <Button title="Add Book" onPress={handleAddBook} />
+        </View>
+      )}
+    </>
+  );
+
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {/* Add Book form */}
-        <TouchableOpacity style={styles.toggleButton} onPress={() => setShowForm(prev => !prev)}>
-          <Text style={styles.toggleButtonText}>{showForm ? 'Hide Add Book Form' : 'Add a New Book'}</Text>
-        </TouchableOpacity>
-
-        {showForm && (
-          <View style={styles.formContainer}>
-            <Text style={styles.formTitle}>Add a New Book</Text>
-            <TextInput style={styles.input} placeholder="Title" value={title} onChangeText={setTitle} />
-            <TextInput style={styles.input} placeholder="Author" value={author} onChangeText={setAuthor} />
-            <TextInput style={styles.input} placeholder="Description" value={description} onChangeText={setDescription} multiline />
-            <Button title="Add Book" onPress={handleAddBook} />
+      <FlatList
+        data={books}
+        renderItem={({ item }) => (
+          <Link href={`/book-detail/${item.id}`}>
+            <BookCard book={item} />
+          </Link>
+        )}
+        keyExtractor={item => item.id}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={() => (
+          <View style={styles.bottomContainer}>
+            <Link href="/borrowed-books" asChild>
+              <Button title="View Borrowed Books" />
+            </Link>
           </View>
         )}
-
-        {/* Book List */}
-        <FlatList
-          data={books}
-          renderItem={({ item }) => (
-            <Link href={`/book-detail/${item.id}`}>
-              <BookCard book={item} />
-            </Link>
-          )}
-          keyExtractor={item => item.id}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
-      </ScrollView>
-
-      {/* View Borrowed Books button at the bottom */}
-      <View style={styles.bottomContainer}>
-        <Link href="/borrowed-books" asChild>
-          <Button title="View Borrowed Books" />
-        </Link>
-      </View>
+        contentContainerStyle={styles.flatListContent}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#f5f5f5' },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingBottom: 100, 
-  },
+  flatListContent: { paddingBottom: 20 },
   toggleButton: {
     backgroundColor: '#1E88E5',
     padding: 10,
@@ -114,8 +111,5 @@ const styles = StyleSheet.create({
   formTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 10 },
   input: { borderWidth: 1, borderColor: '#ccc', padding: 10, marginBottom: 10, borderRadius: 5 },
   separator: { height: 10 },
-  bottomContainer: {
-    marginTop: 20, 
-    marginBottom: 20, 
-  },
+  bottomContainer: { marginTop: 20, marginBottom: 20 },
 });
